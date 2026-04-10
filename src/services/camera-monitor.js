@@ -1,5 +1,6 @@
 const { spawn } = require('child_process');
 const config = require('../config');
+const ffprobeStatic = require('ffprobe-static');
 const { getDb } = require('../db/database');
 
 // Track active camera status checks
@@ -25,7 +26,8 @@ function checkAllCameras() {
 }
 
 function checkCamera(camera) {
-  const ffprobe = spawn(config.ffmpeg.path.replace('ffmpeg', 'ffprobe') || 'ffprobe', [
+  const ffprobePath = ffprobeStatic.path || config.ffmpeg.path.replace('ffmpeg', 'ffprobe') || 'ffprobe';
+  const ffprobe = spawn(ffprobePath, [
     '-v', 'quiet',
     '-rtsp_transport', 'tcp',
     '-i', camera.rtsp_url,

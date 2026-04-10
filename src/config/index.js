@@ -1,4 +1,5 @@
 const path = require('path');
+const ffmpegStatic = require('ffmpeg-static');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const config = {
@@ -26,7 +27,7 @@ const config = {
   },
 
   ffmpeg: {
-    path: process.env.FFMPEG_PATH || 'ffmpeg',
+    path: process.env.FFMPEG_PATH || ffmpegStatic || 'ffmpeg',
   },
 
   stream: {
