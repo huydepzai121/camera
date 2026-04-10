@@ -1,11 +1,8 @@
 FROM node:20-alpine
 
-# Cài FFmpeg
-RUN apk add --no-cache ffmpeg
-
 WORKDIR /app
 
-# Copy package files và install
+# Copy package files và install (ffmpeg/ffprobe tự tải qua npm)
 COPY package.json package-lock.json ./
 RUN npm ci --production
 
