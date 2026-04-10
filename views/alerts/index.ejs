@@ -15,6 +15,8 @@
 
 <div id="alertList"></div>
 
+<%- include('../partials/footer') %>
+
 <script>
   const USER_ROLE = '<%= user.role %>';
 
@@ -93,5 +95,3 @@
   loadCameras();
   loadAlerts();
 </script>
-
-<%- include('../partials/footer') %>

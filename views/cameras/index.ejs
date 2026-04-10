@@ -31,6 +31,8 @@
   </table>
 </div>
 
+<%- include('../partials/footer') %>
+
 <script>
   const USER_ROLE = '<%= user.role %>';
   let cameras = [];
@@ -211,5 +213,3 @@
   loadCameras();
   setInterval(loadCameras, 10000);
 </script>
-
-<%- include('../partials/footer') %>

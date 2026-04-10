@@ -2,7 +2,8 @@
 
 <div id="cameraViewContent">Loading...</div>
 
-<script src="https://cdn.jsdelivr.net/npm/jsmpeg@0.2.0/jsmpg.js"></script>
+<%- include('../partials/footer') %>
+
 <script src="/js/stream-viewer.js"></script>
 <script src="/js/ptz-controls.js"></script>
 <script>
@@ -12,48 +13,69 @@
   let viewer = null;
 
   async function loadCamera() {
-    camera = await api('/api/cameras/' + cameraId);
-    renderView();
+    try {
+      camera = await api('/api/cameras/' + cameraId);
+      renderView();
+    } catch (err) {
+      document.getElementById('cameraViewContent').innerHTML =
+        '<div class="card" style="text-align:center;padding:40px;color:var(--danger);">Failed to load camera: ' + err.message + '</div>';
+    }
   }
 
   function renderView() {
-    const container = document.getElementById('cameraViewContent');
-    container.innerHTML = `
-      <div style="display:flex;gap:20px;flex-wrap:wrap;">
-        <div style="flex:2;min-width:400px;">
-          <div class="camera-preview" style="border-radius:var(--radius);overflow:hidden;">
-            <canvas id="streamCanvas" style="width:100%;height:auto;aspect-ratio:16/9;background:#000;display:block;"></canvas>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
-            <button class="btn btn-primary" id="playBtn" onclick="toggleStream()">▶ Play</button>
-            <button class="btn btn-outline" onclick="enterFullscreen()">⛶ Fullscreen</button>
-            ${USER_ROLE !== 'viewer' ? `
-              <button class="btn btn-danger" id="recordBtn" onclick="toggleRecording()">⏺ Record</button>
-              <button class="btn btn-outline" onclick="captureSnapshot()">📸 Snapshot</button>
-            ` : ''}
-          </div>
-        </div>
-        <div style="flex:1;min-width:280px;">
-          <div class="card" style="margin-bottom:16px;">
-            <div class="card-header"><span class="card-title">Camera Info</span></div>
-            <table style="width:100%;">
-              <tr><td style="color:var(--text-secondary);width:100px;">Name</td><td>${camera.name}</td></tr>
-              <tr><td style="color:var(--text-secondary);">Status</td><td><span class="status-dot ${camera.status}"></span>${camera.status}</td></tr>
-              <tr><td style="color:var(--text-secondary);">Location</td><td>${camera.location || '-'}</td></tr>
-              <tr><td style="color:var(--text-secondary);">Group</td><td>${camera.group_name || '-'}</td></tr>
-              <tr><td style="color:var(--text-secondary);">RTSP</td><td style="font-size:11px;word-break:break-all;">${camera.rtsp_url}</td></tr>
-              <tr><td style="color:var(--text-secondary);">PTZ</td><td>${camera.ptz_supported ? 'Supported' : 'Not supported'}</td></tr>
-              <tr><td style="color:var(--text-secondary);">Last Seen</td><td>${camera.last_seen_at ? formatDate(camera.last_seen_at) : '-'}</td></tr>
-            </table>
-          </div>
-          ${camera.ptz_supported && USER_ROLE !== 'viewer' ? '<div id="ptzPanel" class="card"><div class="card-header"><span class="card-title">PTZ Control</span></div><div id="ptzContainer"></div></div>' : ''}
-        </div>
-      </div>
-    `;
+    const c = camera;
+    const canControl = USER_ROLE !== 'viewer';
 
-    if (camera.ptz_supported && USER_ROLE !== 'viewer') {
+    let controlBtns = '';
+    if (canControl) {
+      controlBtns = '<button class="btn btn-danger" id="recordBtn" onclick="toggleRecording()">\u23FA Record</button>' +
+        '<button class="btn btn-outline" onclick="captureSnapshot()">\uD83D\uDCF8 Snapshot</button>';
+    }
+
+    let ptzHtml = '';
+    if (c.ptz_supported && canControl) {
+      ptzHtml = '<div id="ptzPanel" class="card"><div class="card-header"><span class="card-title">PTZ Control</span></div><div id="ptzContainer"></div></div>';
+    }
+
+    const container = document.getElementById('cameraViewContent');
+    container.innerHTML =
+      '<div style="display:flex;gap:20px;flex-wrap:wrap;">' +
+        '<div style="flex:2;min-width:400px;">' +
+          '<div class="camera-preview" style="border-radius:var(--radius);overflow:hidden;">' +
+            '<canvas id="streamCanvas" style="width:100%;height:auto;aspect-ratio:16/9;background:#000;display:block;"></canvas>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+            '<button class="btn btn-primary" id="playBtn" onclick="toggleStream()">\u25B6 Play</button>' +
+            '<button class="btn btn-outline" onclick="enterFullscreen()">\u26F6 Fullscreen</button>' +
+            controlBtns +
+          '</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:280px;">' +
+          '<div class="card" style="margin-bottom:16px;">' +
+            '<div class="card-header"><span class="card-title">Camera Info</span></div>' +
+            '<table style="width:100%;">' +
+              '<tr><td style="color:var(--text-secondary);width:100px;">Name</td><td>' + esc(c.name) + '</td></tr>' +
+              '<tr><td style="color:var(--text-secondary);">Status</td><td><span class="status-dot ' + c.status + '"></span>' + c.status + '</td></tr>' +
+              '<tr><td style="color:var(--text-secondary);">Location</td><td>' + esc(c.location || '-') + '</td></tr>' +
+              '<tr><td style="color:var(--text-secondary);">Group</td><td>' + esc(c.group_name || '-') + '</td></tr>' +
+              '<tr><td style="color:var(--text-secondary);">RTSP</td><td style="font-size:11px;word-break:break-all;">' + esc(c.rtsp_url) + '</td></tr>' +
+              '<tr><td style="color:var(--text-secondary);">PTZ</td><td>' + (c.ptz_supported ? 'Supported' : 'Not supported') + '</td></tr>' +
+              '<tr><td style="color:var(--text-secondary);">Last Seen</td><td>' + (c.last_seen_at ? formatDate(c.last_seen_at) : '-') + '</td></tr>' +
+            '</table>' +
+          '</div>' +
+          ptzHtml +
+        '</div>' +
+      '</div>';
+
+    if (c.ptz_supported && canControl) {
       initPtzControls('ptzContainer', cameraId);
     }
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
   }
 
   let isStreaming = false;
@@ -63,12 +85,12 @@
     if (isStreaming) {
       if (viewer) viewer.stop();
       isStreaming = false;
-      btn.textContent = '▶ Play';
+      btn.textContent = '\u25B6 Play';
     } else {
       viewer = new StreamViewer(canvas, cameraId);
       viewer.start();
       isStreaming = true;
-      btn.textContent = '⏹ Stop';
+      btn.textContent = '\u23F9 Stop';
     }
   }
 
@@ -79,14 +101,14 @@
       if (isRecording) {
         await api('/api/recordings/stop', { method: 'POST', body: JSON.stringify({ camera_id: cameraId }) });
         isRecording = false;
-        btn.textContent = '⏺ Record';
+        btn.textContent = '\u23FA Record';
         btn.classList.remove('btn-success');
         btn.classList.add('btn-danger');
         notify('Recording stopped', 'info');
       } else {
         await api('/api/recordings/start', { method: 'POST', body: JSON.stringify({ camera_id: cameraId }) });
         isRecording = true;
-        btn.textContent = '⏹ Stop Recording';
+        btn.textContent = '\u23F9 Stop Recording';
         btn.classList.remove('btn-danger');
         btn.classList.add('btn-success');
         notify('Recording started', 'success');
@@ -113,5 +135,3 @@
 
   loadCamera();
 </script>
-
-<%- include('../partials/footer') %>

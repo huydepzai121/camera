@@ -46,6 +46,8 @@
   <button type="submit" class="btn btn-primary">Save Settings</button>
 </form>
 
+<%- include('../partials/footer') %>
+
 <script>
   async function loadSettings() {
     try {
@@ -69,5 +71,3 @@
 
   loadSettings();
 </script>
-
-<%- include('../partials/footer') %>
