@@ -1,0 +1,97 @@
+<%- include('../partials/header') %>
+
+<div class="toolbar">
+  <select id="alertCamera" style="width:auto;">
+    <option value="">All Cameras</option>
+  </select>
+  <select id="alertStatus" style="width:auto;">
+    <option value="">All Status</option>
+    <option value="new">New</option>
+    <option value="acknowledged">Acknowledged</option>
+    <option value="dismissed">Dismissed</option>
+  </select>
+  <button class="btn btn-primary" onclick="loadAlerts()">Filter</button>
+</div>
+
+<div id="alertList"></div>
+
+<script>
+  const USER_ROLE = '<%= user.role %>';
+
+  async function loadCameras() {
+    const data = await api('/api/cameras?limit=200');
+    const sel = document.getElementById('alertCamera');
+    data.cameras.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function loadAlerts() {
+    const camera_id = document.getElementById('alertCamera').value;
+    const status = document.getElementById('alertStatus').value;
+    const params = new URLSearchParams();
+    if (camera_id) params.set('camera_id', camera_id);
+    if (status) params.set('status', status);
+
+    const alerts = await api('/api/alerts?' + params);
+    const container = document.getElementById('alertList');
+
+    if (alerts.length === 0) {
+      container.innerHTML = '<div class="card"><p style="color:var(--text-muted);text-align:center;padding:40px;">No alerts found</p></div>';
+      return;
+    }
+
+    container.innerHTML = '<div class="card" style="padding:0;">' + alerts.map(a => `
+      <div class="alert-item">
+        ${a.snapshot_id
+          ? '<img class="alert-thumb" src="/api/snapshots/' + a.snapshot_id + '" alt="Motion snapshot">'
+          : '<div class="alert-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;">No image</div>'
+        }
+        <div class="alert-info">
+          <h4>${a.camera_name}</h4>
+          <p>${formatDate(a.created_at)}</p>
+        </div>
+        <span class="alert-badge ${a.status}">${a.status}</span>
+        ${a.status === 'new' && USER_ROLE !== 'viewer' ? `
+          <button class="btn btn-sm btn-outline" onclick="ackAlert('${a.id}')">Acknowledge</button>
+          <button class="btn btn-sm btn-outline" onclick="dismissAlert('${a.id}')">Dismiss</button>
+        ` : ''}
+        ${a.status === 'acknowledged' && USER_ROLE !== 'viewer' ? `
+          <button class="btn btn-sm btn-outline" onclick="dismissAlert('${a.id}')">Dismiss</button>
+        ` : ''}
+      </div>
+    `).join('') + '</div>';
+  }
+
+  async function ackAlert(id) {
+    await api('/api/alerts/' + id + '/acknowledge', { method: 'PUT' });
+    notify('Alert acknowledged', 'success');
+    loadAlerts();
+  }
+
+  async function dismissAlert(id) {
+    await api('/api/alerts/' + id + '/dismiss', { method: 'PUT' });
+    notify('Alert dismissed', 'info');
+    loadAlerts();
+  }
+
+  // WebSocket for real-time alerts
+  const ws = connectWs('/ws?action=notifications');
+  ws.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'motion_alert') {
+        notify('Motion detected: ' + data.cameraName, 'warning');
+        loadAlerts();
+      }
+    } catch {}
+  };
+
+  loadCameras();
+  loadAlerts();
+</script>
+
+<%- include('../partials/footer') %>

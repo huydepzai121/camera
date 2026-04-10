@@ -1,0 +1,90 @@
+<%- include('../partials/header') %>
+
+<div class="toolbar">
+  <select id="snapCamera" style="width:auto;">
+    <option value="">All Cameras</option>
+  </select>
+  <input type="date" id="snapDateFrom" style="width:auto;">
+  <input type="date" id="snapDateTo" style="width:auto;">
+  <button class="btn btn-primary" onclick="loadSnapshots()">Filter</button>
+  <button class="btn btn-outline" id="bulkDownloadBtn" onclick="bulkDownload()" style="display:none;">⬇ Download Selected</button>
+</div>
+
+<div class="snapshot-grid" id="snapshotGrid">
+  <p style="color:var(--text-muted);">Loading snapshots...</p>
+</div>
+
+<script>
+  let snapshots = [];
+  let selected = new Set();
+
+  async function loadCameras() {
+    const data = await api('/api/cameras?limit=200');
+    const sel = document.getElementById('snapCamera');
+    data.cameras.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function loadSnapshots() {
+    const camera_id = document.getElementById('snapCamera').value;
+    const date_from = document.getElementById('snapDateFrom').value;
+    const date_to = document.getElementById('snapDateTo').value;
+    const params = new URLSearchParams();
+    if (camera_id) params.set('camera_id', camera_id);
+    if (date_from) params.set('date_from', date_from);
+    if (date_to) params.set('date_to', date_to);
+
+    snapshots = await api('/api/snapshots?' + params);
+    renderGrid();
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('snapshotGrid');
+    if (snapshots.length === 0) {
+      grid.innerHTML = '<p style="color:var(--text-muted);">No snapshots found</p>';
+      return;
+    }
+
+    grid.innerHTML = snapshots.map(s => `
+      <div class="snapshot-item ${selected.has(s.id) ? 'selected' : ''}" onclick="toggleSelect('${s.id}')" ondblclick="viewSnapshot('${s.id}')">
+        <img src="/api/snapshots/${s.id}" alt="${s.camera_name}" loading="lazy">
+        <div class="snapshot-meta">
+          ${s.camera_name} - ${formatDate(s.created_at)}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function toggleSelect(id) {
+    if (selected.has(id)) selected.delete(id);
+    else selected.add(id);
+    document.getElementById('bulkDownloadBtn').style.display = selected.size > 0 ? '' : 'none';
+    renderGrid();
+  }
+
+  function viewSnapshot(id) {
+    openModal('Snapshot', '<img src="/api/snapshots/' + id + '" style="width:100%;border-radius:4px;">');
+  }
+
+  async function bulkDownload() {
+    const res = await fetch('/api/snapshots/bulk-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: Array.from(selected) }),
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'snapshots.zip'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  loadCameras();
+  loadSnapshots();
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,61 @@
+<%- include('partials/header') %>
+
+<div class="stats-grid" id="statsGrid">
+  <div class="stat-card accent"><div class="stat-value" id="totalCameras">-</div><div class="stat-label">Total Cameras</div></div>
+  <div class="stat-card success"><div class="stat-value" id="onlineCameras">-</div><div class="stat-label">Online</div></div>
+  <div class="stat-card danger"><div class="stat-value" id="offlineCameras">-</div><div class="stat-label">Offline</div></div>
+  <div class="stat-card warning"><div class="stat-value" id="activeRecordings">-</div><div class="stat-label">Recording</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Storage Usage</span></div>
+    <div id="storageInfo">
+      <div class="progress-bar" style="margin-bottom:8px;"><div class="fill blue" id="storageBar" style="width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-secondary);">
+        <span id="storageUsed">-</span>
+        <span id="storageLimit">-</span>
+      </div>
+      <div style="margin-top:12px;font-size:13px;">
+        <div>Recordings: <span id="recStorage">-</span></div>
+        <div>Snapshots: <span id="snapStorage">-</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">System Health</span></div>
+    <div id="healthInfo">
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <span>CPU</span><span id="cpuValue">-</span>
+        </div>
+        <div class="progress-bar"><div class="fill green" id="cpuBar" style="width:0%"></div></div>
+      </div>
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <span>Memory</span><span id="memValue">-</span>
+        </div>
+        <div class="progress-bar"><div class="fill blue" id="memBar" style="width:0%"></div></div>
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:8px;">
+        <div>FFmpeg processes: <span id="ffmpegCount">-</span></div>
+        <div>WS connections: <span id="wsCount">-</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Recent Alerts</span>
+    <a href="/alerts" class="btn btn-sm btn-outline">View All</a>
+  </div>
+  <div id="recentAlerts" style="max-height:400px;overflow-y:auto;">
+    <p style="color:var(--text-muted);text-align:center;padding:20px;">Loading...</p>
+  </div>
+</div>
+
+<script src="/js/dashboard.js"></script>
+
+<%- include('partials/footer') %>

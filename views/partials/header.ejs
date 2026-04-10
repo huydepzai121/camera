@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — Camera Manager</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>📹 CamManager</h2>
+        <button class="sidebar-toggle" id="sidebarToggle">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/" class="nav-item <%= page === 'dashboard' ? 'active' : '' %>">
+          <span class="nav-icon">📊</span> Dashboard
+        </a>
+        <a href="/cameras" class="nav-item <%= page === 'cameras' ? 'active' : '' %>">
+          <span class="nav-icon">📷</span> Cameras
+        </a>
+        <a href="/cameras/grid" class="nav-item <%= page === 'grid' ? 'active' : '' %>">
+          <span class="nav-icon">⊞</span> Grid View
+        </a>
+        <a href="/recordings" class="nav-item <%= page === 'recordings' ? 'active' : '' %>">
+          <span class="nav-icon">🔴</span> Recordings
+        </a>
+        <a href="/snapshots" class="nav-item <%= page === 'snapshots' ? 'active' : '' %>">
+          <span class="nav-icon">📸</span> Snapshots
+        </a>
+        <a href="/alerts" class="nav-item <%= page === 'alerts' ? 'active' : '' %>">
+          <span class="nav-icon">🔔</span> Alerts
+        </a>
+        <% if (user && user.role === 'admin') { %>
+        <div class="nav-divider"></div>
+        <a href="/users" class="nav-item <%= page === 'users' ? 'active' : '' %>">
+          <span class="nav-icon">👥</span> Users
+        </a>
+        <a href="/settings" class="nav-item <%= page === 'settings' ? 'active' : '' %>">
+          <span class="nav-icon">⚙️</span> Settings
+        </a>
+        <% } %>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-bar">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="page-title"><%= title %></h1>
+        <div class="user-info">
+          <span class="user-badge"><%= user ? user.role : '' %></span>
+          <span class="username"><%= user ? user.username : '' %></span>
+          <button class="btn btn-sm btn-outline" id="logoutBtn">Logout</button>
+        </div>
+      </header>
+      <div class="content-area">

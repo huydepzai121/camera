@@ -1,0 +1,215 @@
+<%- include('../partials/header') %>
+
+<div class="toolbar">
+  <input type="search" class="search-input" id="cameraSearch" placeholder="Search cameras...">
+  <select id="groupFilter">
+    <option value="">All Groups</option>
+  </select>
+  <select id="statusFilter">
+    <option value="">All Status</option>
+    <option value="online">Online</option>
+    <option value="offline">Offline</option>
+  </select>
+  <% if (user.role !== 'viewer') { %>
+    <button class="btn btn-primary" onclick="showAddCamera()">+ Add Camera</button>
+  <% } %>
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Name</th>
+        <th>Location</th>
+        <th>Group</th>
+        <th>RTSP URL</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="cameraTable"></tbody>
+  </table>
+</div>
+
+<script>
+  const USER_ROLE = '<%= user.role %>';
+  let cameras = [];
+  let groups = [];
+
+  async function loadGroups() {
+    groups = await api('/api/camera-groups');
+    const sel = document.getElementById('groupFilter');
+    groups.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function loadCameras() {
+    const search = document.getElementById('cameraSearch').value;
+    const group_id = document.getElementById('groupFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (group_id) params.set('group_id', group_id);
+    if (status) params.set('status', status);
+
+    const data = await api('/api/cameras?' + params.toString());
+    cameras = data.cameras;
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('cameraTable');
+    if (cameras.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">No cameras found. Add your first camera!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = cameras.map(c => `
+      <tr>
+        <td><span class="status-dot ${c.status}"></span>${c.status}</td>
+        <td><a href="/cameras/${c.id}">${c.name}</a></td>
+        <td>${c.location || '-'}</td>
+        <td>${c.group_name || '-'}</td>
+        <td style="font-size:12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.rtsp_url}</td>
+        <td>
+          <a href="/cameras/${c.id}" class="btn btn-sm btn-outline">View</a>
+          ${USER_ROLE !== 'viewer' ? `<button class="btn btn-sm btn-outline" onclick="editCamera('${c.id}')">Edit</button>` : ''}
+          ${USER_ROLE === 'admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteCamera('${c.id}', '${c.name.replace(/'/g, "\\'")}')">Delete</button>` : ''}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function showAddCamera() {
+    openModal('Add Camera', `
+      <form id="addCameraForm">
+        <div class="form-group">
+          <label>Name *</label>
+          <input type="text" name="name" required>
+        </div>
+        <div class="form-group">
+          <label>RTSP URL *</label>
+          <input type="text" name="rtsp_url" required placeholder="rtsp://192.168.1.100:554/stream1">
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" name="location">
+        </div>
+        <div class="form-group">
+          <label>Group</label>
+          <select name="group_id">
+            <option value="">None</option>
+            ${groups.map(g => '<option value="' + g.id + '">' + g.name + '</option>').join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tags (comma-separated)</label>
+          <input type="text" name="tags">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea name="description"></textarea>
+        </div>
+        <div class="form-group">
+          <label>ONVIF Host (for PTZ)</label>
+          <input type="text" name="onvif_host" placeholder="192.168.1.100">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="form-group" style="flex:1;">
+            <label>ONVIF User</label>
+            <input type="text" name="onvif_user">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>ONVIF Password</label>
+            <input type="password" name="onvif_pass">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Camera</button>
+        </div>
+      </form>
+    `);
+
+    document.getElementById('addCameraForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      const body = Object.fromEntries(form);
+      try {
+        await api('/api/cameras', { method: 'POST', body: JSON.stringify(body) });
+        closeModal();
+        notify('Camera added', 'success');
+        loadCameras();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    };
+  }
+
+  async function editCamera(id) {
+    const cam = cameras.find(c => c.id === id);
+    if (!cam) return;
+    openModal('Edit Camera', `
+      <form id="editCameraForm">
+        <div class="form-group"><label>Name</label><input type="text" name="name" value="${cam.name}"></div>
+        <div class="form-group"><label>RTSP URL</label><input type="text" name="rtsp_url" value="${cam.rtsp_url}"></div>
+        <div class="form-group"><label>Location</label><input type="text" name="location" value="${cam.location || ''}"></div>
+        <div class="form-group">
+          <label>Group</label>
+          <select name="group_id">
+            <option value="">None</option>
+            ${groups.map(g => '<option value="' + g.id + '" ' + (g.id === cam.group_id ? 'selected' : '') + '>' + g.name + '</option>').join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Tags</label><input type="text" name="tags" value="${cam.tags || ''}"></div>
+        <div class="form-group"><label>Description</label><textarea name="description">${cam.description || ''}</textarea></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    `);
+
+    document.getElementById('editCameraForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      const body = Object.fromEntries(form);
+      try {
+        await api('/api/cameras/' + id, { method: 'PUT', body: JSON.stringify(body) });
+        closeModal();
+        notify('Camera updated', 'success');
+        loadCameras();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    };
+  }
+
+  async function deleteCamera(id, name) {
+    if (!confirmAction('Delete camera "' + name + '"? This cannot be undone.')) return;
+    try {
+      await api('/api/cameras/' + id, { method: 'DELETE' });
+      notify('Camera deleted', 'success');
+      loadCameras();
+    } catch (err) {
+      notify(err.message, 'error');
+    }
+  }
+
+  let searchTimeout;
+  document.getElementById('cameraSearch').addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(loadCameras, 300);
+  });
+  document.getElementById('groupFilter').addEventListener('change', loadCameras);
+  document.getElementById('statusFilter').addEventListener('change', loadCameras);
+
+  loadGroups();
+  loadCameras();
+  setInterval(loadCameras, 10000);
+</script>
+
+<%- include('../partials/footer') %>

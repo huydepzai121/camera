@@ -1,0 +1,73 @@
+<%- include('../partials/header') %>
+
+<form id="settingsForm">
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><span class="card-title">General</span></div>
+    <div class="form-group"><label>Camera Status Check Interval (seconds)</label><input type="number" name="status_check_interval" value="30"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><span class="card-title">Recording</span></div>
+    <div class="form-group"><label>Default Retention (days)</label><input type="number" name="recording_retention_days" value="30"></div>
+    <div class="form-group"><label>Max Storage (GB)</label><input type="number" name="max_storage_gb" value="100"></div>
+    <div class="form-group"><label>Segment Duration (minutes)</label><input type="number" name="segment_duration_minutes" value="15"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><span class="card-title">Motion Detection</span></div>
+    <div class="form-group">
+      <label>Default Sensitivity</label>
+      <select name="motion_sensitivity">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Cooldown Period (seconds)</label><input type="number" name="motion_cooldown_seconds" value="60"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><span class="card-title">Notifications</span></div>
+    <div class="form-group"><label>SMTP Host</label><input type="text" name="smtp_host"></div>
+    <div style="display:flex;gap:12px;">
+      <div class="form-group" style="flex:1;"><label>SMTP Port</label><input type="number" name="smtp_port" value="587"></div>
+      <div class="form-group" style="flex:1;"><label>SMTP User</label><input type="text" name="smtp_user"></div>
+    </div>
+    <div class="form-group"><label>SMTP Password</label><input type="password" name="smtp_pass"></div>
+    <div class="form-group"><label>From Email</label><input type="email" name="smtp_from"></div>
+    <div class="form-group"><label>Webhook URL</label><input type="url" name="webhook_url" placeholder="https://..."></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><span class="card-title">Snapshots</span></div>
+    <div class="form-group"><label>Snapshot Retention (days)</label><input type="number" name="snapshot_retention_days" value="7"></div>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Save Settings</button>
+</form>
+
+<script>
+  async function loadSettings() {
+    try {
+      const settings = await api('/api/settings');
+      const form = document.getElementById('settingsForm');
+      for (const [key, value] of Object.entries(settings)) {
+        const input = form.querySelector('[name="' + key + '"]');
+        if (input) input.value = value;
+      }
+    } catch {}
+  }
+
+  document.getElementById('settingsForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    try {
+      await api('/api/settings', { method: 'PUT', body: JSON.stringify(Object.fromEntries(form)) });
+      notify('Settings saved', 'success');
+    } catch (err) { notify(err.message, 'error'); }
+  };
+
+  loadSettings();
+</script>
+
+<%- include('../partials/footer') %>

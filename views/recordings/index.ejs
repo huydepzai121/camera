@@ -1,0 +1,105 @@
+<%- include('../partials/header') %>
+
+<div class="toolbar">
+  <select id="recCamera" style="width:auto;">
+    <option value="">All Cameras</option>
+  </select>
+  <input type="date" id="recDateFrom" style="width:auto;">
+  <input type="date" id="recDateTo" style="width:auto;">
+  <button class="btn btn-primary" onclick="loadRecordings()">Filter</button>
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Camera</th>
+        <th>Type</th>
+        <th>Started</th>
+        <th>Duration</th>
+        <th>Size</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="recTable"></tbody>
+  </table>
+</div>
+
+<!-- Video Player Modal -->
+<div id="playerModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content" style="max-width:800px;">
+    <div class="modal-header">
+      <h3 id="playerTitle">Playback</h3>
+      <button class="modal-close" onclick="closePlayer()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <video id="videoPlayer" controls style="width:100%;background:#000;" autoplay></video>
+    </div>
+  </div>
+</div>
+
+<script>
+  const USER_ROLE = '<%= user.role %>';
+
+  async function loadCameras() {
+    const data = await api('/api/cameras?limit=200');
+    const sel = document.getElementById('recCamera');
+    data.cameras.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function loadRecordings() {
+    const camera_id = document.getElementById('recCamera').value;
+    const date_from = document.getElementById('recDateFrom').value;
+    const date_to = document.getElementById('recDateTo').value;
+    const params = new URLSearchParams();
+    if (camera_id) params.set('camera_id', camera_id);
+    if (date_from) params.set('date_from', date_from);
+    if (date_to) params.set('date_to', date_to);
+
+    const recordings = await api('/api/recordings?' + params);
+    const tbody = document.getElementById('recTable');
+    tbody.innerHTML = recordings.map(r => `
+      <tr>
+        <td>${r.camera_name}</td>
+        <td>${r.recording_type}</td>
+        <td>${formatDate(r.started_at)}</td>
+        <td>${formatDuration(r.duration_seconds)}</td>
+        <td>${formatBytes(r.file_size)}</td>
+        <td>
+          <button class="btn btn-sm btn-outline" onclick="playRecording('${r.id}', '${r.camera_name}')">▶ Play</button>
+          <a href="/api/recordings/${r.id}/download" class="btn btn-sm btn-outline">⬇ Download</a>
+          ${USER_ROLE === 'admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteRecording('${r.id}')">Delete</button>` : ''}
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No recordings found</td></tr>';
+  }
+
+  function playRecording(id, name) {
+    document.getElementById('playerTitle').textContent = 'Playback: ' + name;
+    document.getElementById('videoPlayer').src = '/api/recordings/' + id + '/stream';
+    document.getElementById('playerModal').style.display = 'flex';
+  }
+
+  function closePlayer() {
+    document.getElementById('videoPlayer').pause();
+    document.getElementById('videoPlayer').src = '';
+    document.getElementById('playerModal').style.display = 'none';
+  }
+
+  async function deleteRecording(id) {
+    if (!confirmAction('Delete this recording?')) return;
+    await api('/api/recordings/' + id, { method: 'DELETE' });
+    notify('Recording deleted', 'success');
+    loadRecordings();
+  }
+
+  loadCameras();
+  loadRecordings();
+</script>
+
+<%- include('../partials/footer') %>

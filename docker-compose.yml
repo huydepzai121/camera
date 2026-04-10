@@ -1,0 +1,40 @@
+services:
+  camera-manager:
+    build: .
+    container_name: camera-manager
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - camera-data:/app/data
+    environment:
+      - PORT=3000
+      - JWT_SECRET=thay-bang-chuoi-bi-mat-cua-ban
+      - DEFAULT_ADMIN_PASSWORD=admin123
+      - DB_PATH=./data/camera.db
+      - RECORDINGS_DIR=./data/recordings
+      - SNAPSHOTS_DIR=./data/snapshots
+      - MAX_STORAGE_GB=100
+      - RECORDING_RETENTION_DAYS=30
+      - SNAPSHOT_RETENTION_DAYS=7
+      - STREAM_RESOLUTION=1024x768
+      - STREAM_BITRATE=1000k
+      - STREAM_FPS=30
+      - MOTION_SENSITIVITY=medium
+      - MOTION_COOLDOWN_SECONDS=60
+      # - SMTP_HOST=smtp.gmail.com
+      # - SMTP_PORT=587
+      # - SMTP_USER=your-email@gmail.com
+      # - SMTP_PASS=your-app-password
+      # - SMTP_FROM=camera-alerts@localhost
+      # - WEBHOOK_URL=https://your-webhook-url
+    networks:
+      - camera-net
+
+networks:
+  camera-net:
+    driver: bridge
+
+volumes:
+  camera-data:
+    driver: local

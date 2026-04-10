@@ -1,0 +1,106 @@
+<%- include('../partials/header') %>
+
+<div class="toolbar">
+  <select id="gridLayout" style="width:auto;">
+    <option value="1">1x1</option>
+    <option value="2" selected>2x2</option>
+    <option value="3">3x3</option>
+    <option value="4">4x4</option>
+  </select>
+  <select id="gridGroup" style="width:auto;">
+    <option value="">All Groups</option>
+  </select>
+  <button class="btn btn-primary" id="startAllBtn" onclick="startAllStreams()">▶ Start All</button>
+  <button class="btn btn-outline" id="stopAllBtn" onclick="stopAllStreams()">⏹ Stop All</button>
+</div>
+
+<div class="camera-grid grid-2x2" id="cameraGrid">
+  <p style="color:var(--text-muted);">Loading cameras...</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsmpeg@0.2.0/jsmpg.js"></script>
+<script src="/js/stream-viewer.js"></script>
+<script>
+  let cameras = [];
+  let viewers = {};
+
+  async function loadGroups() {
+    const groups = await api('/api/camera-groups');
+    const sel = document.getElementById('gridGroup');
+    groups.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function loadCameras() {
+    const group_id = document.getElementById('gridGroup').value;
+    const params = group_id ? '?group_id=' + group_id : '';
+    const data = await api('/api/cameras' + params);
+    cameras = data.cameras;
+    renderGrid();
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('cameraGrid');
+    if (cameras.length === 0) {
+      grid.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:40px;">No cameras found</p>';
+      return;
+    }
+
+    grid.innerHTML = cameras.map(cam => `
+      <div class="camera-card" data-id="${cam.id}">
+        <div class="camera-preview">
+          <canvas id="canvas-${cam.id}" style="width:100%;height:100%;"></canvas>
+          ${cam.status === 'offline' ? `
+            <div class="offline-overlay">
+              <span style="font-size:24px;">📷</span>
+              <span>Offline</span>
+              <span style="font-size:11px;">${cam.last_seen_at ? 'Last: ' + formatDate(cam.last_seen_at) : ''}</span>
+            </div>
+          ` : ''}
+        </div>
+        <div class="camera-card-info">
+          <h3><span class="status-dot ${cam.status}"></span><a href="/cameras/${cam.id}">${cam.name}</a></h3>
+          <p>${cam.location || cam.group_name || ''}</p>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function startAllStreams() {
+    cameras.forEach(cam => {
+      if (cam.status === 'online' && !viewers[cam.id]) {
+        const canvas = document.getElementById('canvas-' + cam.id);
+        if (canvas) {
+          viewers[cam.id] = new StreamViewer(canvas, cam.id);
+          viewers[cam.id].start();
+        }
+      }
+    });
+  }
+
+  function stopAllStreams() {
+    Object.keys(viewers).forEach(id => {
+      viewers[id].stop();
+      delete viewers[id];
+    });
+  }
+
+  document.getElementById('gridLayout').addEventListener('change', (e) => {
+    const grid = document.getElementById('cameraGrid');
+    grid.className = 'camera-grid grid-' + e.target.value + 'x' + e.target.value;
+  });
+
+  document.getElementById('gridGroup').addEventListener('change', () => {
+    stopAllStreams();
+    loadCameras();
+  });
+
+  loadGroups();
+  loadCameras();
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,126 @@
+<%- include('../partials/header') %>
+
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="showAddUser()">+ Add User</button>
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+  </table>
+</div>
+
+<script>
+  let users = [];
+
+  async function loadUsers() {
+    users = await api('/api/users');
+    const tbody = document.getElementById('userTable');
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${u.username}</td>
+        <td><span class="user-badge">${u.role}</span></td>
+        <td>${u.enabled ? '<span style="color:var(--success);">Active</span>' : '<span style="color:var(--danger);">Disabled</span>'}</td>
+        <td>${formatDate(u.created_at)}</td>
+        <td>
+          <button class="btn btn-sm btn-outline" onclick="editUser('${u.id}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}', '${u.username}')">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function showAddUser() {
+    openModal('Add User', `
+      <form id="addUserForm">
+        <div class="form-group"><label>Username *</label><input type="text" name="username" required></div>
+        <div class="form-group"><label>Password *</label><input type="password" name="password" required></div>
+        <div class="form-group">
+          <label>Role</label>
+          <select name="role">
+            <option value="viewer">Viewer</option>
+            <option value="operator">Operator</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    `);
+
+    document.getElementById('addUserForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      try {
+        await api('/api/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(form)) });
+        closeModal();
+        notify('User created', 'success');
+        loadUsers();
+      } catch (err) { notify(err.message, 'error'); }
+    };
+  }
+
+  function editUser(id) {
+    const u = users.find(x => x.id === id);
+    if (!u) return;
+    openModal('Edit User', `
+      <form id="editUserForm">
+        <div class="form-group"><label>Username</label><input type="text" name="username" value="${u.username}"></div>
+        <div class="form-group"><label>New Password (leave blank to keep)</label><input type="password" name="password"></div>
+        <div class="form-group">
+          <label>Role</label>
+          <select name="role">
+            <option value="viewer" ${u.role === 'viewer' ? 'selected' : ''}>Viewer</option>
+            <option value="operator" ${u.role === 'operator' ? 'selected' : ''}>Operator</option>
+            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" name="enabled" ${u.enabled ? 'checked' : ''}> Enabled</label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    `);
+
+    document.getElementById('editUserForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      const body = Object.fromEntries(form);
+      body.enabled = e.target.querySelector('[name=enabled]').checked;
+      if (!body.password) delete body.password;
+      try {
+        await api('/api/users/' + id, { method: 'PUT', body: JSON.stringify(body) });
+        closeModal();
+        notify('User updated', 'success');
+        loadUsers();
+      } catch (err) { notify(err.message, 'error'); }
+    };
+  }
+
+  async function deleteUser(id, username) {
+    if (!confirmAction('Delete user "' + username + '"?')) return;
+    try {
+      await api('/api/users/' + id, { method: 'DELETE' });
+      notify('User deleted', 'success');
+      loadUsers();
+    } catch (err) { notify(err.message, 'error'); }
+  }
+
+  loadUsers();
+</script>
+
+<%- include('../partials/footer') %>
